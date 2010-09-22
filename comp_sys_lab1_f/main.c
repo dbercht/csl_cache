@@ -1,3 +1,4 @@
+
 #include <stdio.h>
 #include <math.h>
 
@@ -127,18 +128,14 @@ void simulator(int C, int K, int L){
 
     }
 
-    int instruction, address, tag, set, setLine;
+    int iter, instruction, address, tag, set, setLine;
     double missNumber, totalMemoryReferences; //miss will take care of maintaining track of how many misses the simulator has, toatlIteratiosn just counts how many total addresses the simulator has.
     missNumber = 0;
     totalMemoryReferences = 0;
     instruction = 1;
     address = 0;
-    FILE *ifp;   //Pointer to a file is declared
-    ifp = fopen("trace.txt", "r"); // ifp points to file
-                                  // trace.txt, opened for
-                                  // reading
-    while (!feof(ifp)) {  // exit if end-of-file reached
-    fscanf(ifp, "%d %x", &instruction, &address); // read next line
+    while(address < 4000){
+        //printf("%d\n", address);
         switch (instruction){ // cases 0 -3 run the same thing
             case 0:
             case 1:
@@ -146,7 +143,7 @@ void simulator(int C, int K, int L){
                 tag = decodeTag(address, C, K, L, setSize);
                 set = decodeSet(address, C, K, L, setSize);
                 //Printing information
-                printf("Address: %x \n Tag: %x \n Set: %d \n\n", address, tag, set);
+                //printf("Address: %x \n Tag: %d \n Set: %d \n\n", address, tag, set);
                 if((setLine = tagHit(tagArray, set, tag, lineSize)) > -1){
                     if(dataValid(validBitArray, set, setLine, lineSize)>0){
                         updateLRU(LRUArray, set, setLine, lineSize);
@@ -169,12 +166,10 @@ void simulator(int C, int K, int L){
                 clearCache(validBitArray, lineSize, setSize);
                 break;
         }
+        address= address+4;
         totalMemoryReferences++;
-            //End iteration
-        //address++;
     }
 
-    fclose(ifp); //  Close file
     double missRate = missNumber/totalMemoryReferences*100;
     //printCache(tagArray, validBitArray, LRUArray, setSize, lineSize);
     printf("%.0f misses, ", missNumber);
@@ -183,18 +178,7 @@ void simulator(int C, int K, int L){
 }
 
 int main(){
-    printf("hi");
     int i;
-    printf("Part a) \n");
-    for (i =4; i<257; i=i*2){
-        simulator(1024, 1, i);
-    }
-
-    printf("Part b) \n");
-    for (i =64; i<10000; i=i*2){
-        simulator(i, 4, 16);
-    }
-
     printf("Part c) \n");
     for (i =1; i<20; i=i*2){
         simulator(256, i, 16);

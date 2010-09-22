@@ -1,0 +1,5 @@
+# depslib dependency file v1.0
+1285190385 source:/home/dow/Computer Systems Lab I/Comp_sys_lab_1/comp_sys_lab1_f/main.c
+	<stdio.h>
+	<math.h>
+

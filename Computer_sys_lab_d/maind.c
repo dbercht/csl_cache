@@ -114,7 +114,12 @@ void simulator(int C, int K, int L){
 
     int setSize = calculateSetSize(C, K, L);
     int lineSize = calculateLineSize(C, K, L);
+    //First set of arrays for data
     int LRUArray[lineSize*setSize], tagArray[lineSize*setSize], validBitArray[lineSize*setSize];
+    //First set of arrays for data
+    int dataLRUArray[lineSize*setSize], dataTagArray[lineSize*setSize], dataValidBitArray[lineSize*setSize];
+    //Second set of arrays for instruction
+    int instructionLRUArray[lineSize*setSize], instructionTagArray[lineSize*setSize], instructionValidBitArray[lineSize*setSize];
     //Initializes all array entries to 0
     int i,j;
     //Initializing every LRU of the cache to a value between 0 - (lineSize-1)
@@ -123,13 +128,23 @@ void simulator(int C, int K, int L){
             LRUArray[i+j*lineSize] = i;
             validBitArray[i+j*lineSize] = 0;
             tagArray[i+j*lineSize] = 0;
+            dataLRUArray[i+j*lineSize] = i;
+            dataValidBitArray[i+j*lineSize] = 0;
+            dataTagArray[i+j*lineSize] = 0;
+            instructionLRUArray[i+j*lineSize] = i;
+            instructionValidBitArray[i+j*lineSize] = 0;
+            instructionTagArray[i+j*lineSize] = 0;
         }
 
     }
 
     int instruction, address, tag, set, setLine;
-    double missNumber, totalMemoryReferences; //miss will take care of maintaining track of how many misses the simulator has, toatlIteratiosn just counts how many total addresses the simulator has.
+    double missNumber, totalMemoryReferences, dataMiss, instructionMiss, dataReferences, instructionReferences; //miss will take care of maintaining track of how many misses the simulator has, toatlIteratiosn just counts how many total addresses the simulator has.
     missNumber = 0;
+    dataMiss = 0;
+    instructionMiss = 0;
+    dataReferences = 0;
+    instructionReferences = 0;
     totalMemoryReferences = 0;
     instruction = 1;
     address = 0;
@@ -142,48 +157,87 @@ void simulator(int C, int K, int L){
         switch (instruction){ // cases 0 -3 run the same thing
             case 0:
             case 1:
+                tag = decodeTag(address, C, K, L, setSize);
+                set = decodeSet(address, C, K, L, setSize);
+                //Printing information
+                printf("Address: %x \n Tag: %d \n Set: %d \n\n", address, tag, set);
+                if((setLine = tagHit(dataTagArray, set, tag, lineSize)) > -1){
+                    if(dataValid(dataValidBitArray, set, setLine, lineSize)>0){
+                        updateLRU(dataLRUArray, set, setLine, lineSize);
+                    }else{
+                        writeToAddress(dataTagArray, set, tag, setLine, lineSize);
+                        validateData(dataValidBitArray, set, setLine, lineSize);
+                        updateLRU(dataLRUArray, set, setLine, lineSize);
+                        dataMiss++;
+                        missNumber++;
+                    }
+                }else{
+                    setLine = writeToCache(dataTagArray, dataLRUArray, set, tag, lineSize);
+                    validateData(dataValidBitArray, set, setLine, lineSize);
+                    updateLRU(dataLRUArray, set, setLine, lineSize);
+                    dataMiss++;
+                    missNumber++;
+                }
+                dataReferences++;
+                totalMemoryReferences++;
+                break;
+
             case 2:
                 tag = decodeTag(address, C, K, L, setSize);
                 set = decodeSet(address, C, K, L, setSize);
                 //Printing information
-                printf("Address: %x \n Tag: %x \n Set: %d \n\n", address, tag, set);
-                if((setLine = tagHit(tagArray, set, tag, lineSize)) > -1){
-                    if(dataValid(validBitArray, set, setLine, lineSize)>0){
-                        updateLRU(LRUArray, set, setLine, lineSize);
+                //printf("Address: %x \n Tag: %d \n Set: %d \n\n", address, tag, set);
+                if((setLine = tagHit(instructionTagArray, set, tag, lineSize)) > -1){
+                    if(dataValid(instructionValidBitArray, set, setLine, lineSize)>0){
+                        updateLRU(instructionLRUArray, set, setLine, lineSize);
                     }else{
-                        writeToAddress(tagArray, set, tag, setLine, lineSize);
-                        validateData(validBitArray, set, setLine, lineSize);
-                        updateLRU(LRUArray, set, setLine, lineSize);
+                        writeToAddress(instructionTagArray, set, tag, setLine, lineSize);
+                        validateData(instructionValidBitArray, set, setLine, lineSize);
+                        updateLRU(instructionLRUArray, set, setLine, lineSize);
+                        instructionMiss++;
                         missNumber++;
                     }
                 }else{
-                    setLine = writeToCache(tagArray, LRUArray, set, tag, lineSize);
-                    validateData(validBitArray, set, setLine, lineSize);
-                    updateLRU(LRUArray, set, setLine, lineSize);
+                    setLine = writeToCache(instructionTagArray, LRUArray, set, tag, lineSize);
+                    validateData(instructionValidBitArray, set, setLine, lineSize);
+                    updateLRU(instructionLRUArray, set, setLine, lineSize);
+                    instructionMiss++;
                     missNumber++;
                 }
-                break;
+                instructionReferences++;
+                totalMemoryReferences++;
 
-            case 3:break;
-            case 4:
-                clearCache(validBitArray, lineSize, setSize);
                 break;
-        }
-        totalMemoryReferences++;
             //End iteration
         //address++;
+            case 3:break;
+            case 4:
+                clearCache(dataValidBitArray, lineSize, setSize);
+                clearCache(instructionValidBitArray, lineSize, setSize);
+                break;
+        }
     }
-
     fclose(ifp); //  Close file
     double missRate = missNumber/totalMemoryReferences*100;
+    double instructionMissRate = instructionMiss/totalMemoryReferences*100;
+    double dataMissRate = dataMiss/totalMemoryReferences*100;
     //printCache(tagArray, validBitArray, LRUArray, setSize, lineSize);
     printf("%.0f misses, ", missNumber);
     printf("%.0f total memory references, ", totalMemoryReferences);
-    printf("%2.4f  miss rate, \n\n", missRate);
+    printf("%2.4f  miss rate, \n", missRate);
+
+    printf("%.0f misses, ", dataMiss);
+    printf("%.0f total memory references, ", totalMemoryReferences);
+    printf("%2.4f data miss rate, \n", dataMissRate);
+
+    printf("%.0f misses, ", instructionMiss);
+    printf("%.0f total memory references, ", totalMemoryReferences);
+    printf("%2.4f instruction miss rate, \n\n", instructionMissRate);
 }
 
 int main(){
-    printf("hi");
+    simulator(1024, 1, 16);
+/*
     int i;
     printf("Part a) \n");
     for (i =4; i<257; i=i*2){
@@ -199,4 +253,5 @@ int main(){
     for (i =1; i<20; i=i*2){
         simulator(256, i, 16);
     }
+    */
 }
