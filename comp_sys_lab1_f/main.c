@@ -72,13 +72,11 @@ int tagHit(int tagArray[],int dataSet, int dataTag, int lines){
 
 int decodeSet(int address, int C, int K, int L, int sets){
     int set;
-    int shiftAmount = log2(L);
-    int andAmount = log2(C)-log2(K)-log2(L);
-    set = address >> shiftAmount;
-    int andValue = pow(2, andAmount);
-    andValue--;
-    set = set & andValue;
-    set = set%sets;
+    int andAmount = log2(L)+log2(sets);
+    int byteOffset = log2(L);
+    andAmount = pow(2, (andAmount)) - 1;
+    set = (address & andAmount);
+    set = set >> (byteOffset);
     return set;
 }
 
@@ -100,7 +98,6 @@ void printCache(int tagArray[], int validBitArray[], int LRUArray[], int set, in
     int i,j;
 
     for(j = 0; j<set; j++){
-
         printf("\n Set %d \n", j);
         for(i = 0; i<line; i++ ){
 //          printf("%d",test[i][j]);
@@ -118,6 +115,7 @@ void simulator(int C, int K, int L){
     int LRUArray[lineSize*setSize], tagArray[lineSize*setSize], validBitArray[lineSize*setSize];
     //Initializes all array entries to 0
     int i,j;
+    printf("%d Cache, %d Lines, %d Bytes Per Block\n", C, K, L);
     //Initializing every LRU of the cache to a value between 0 - (lineSize-1)
     for(i = 0; i<lineSize; i++ ){
         for(j = 0; j<setSize; j++){
@@ -168,10 +166,11 @@ void simulator(int C, int K, int L){
         }
         address= address+4;
         totalMemoryReferences++;
+        int scan;
+        //printCache(tagArray, validBitArray, LRUArray, setSize, lineSize);
     }
 
     double missRate = missNumber/totalMemoryReferences*100;
-    //printCache(tagArray, validBitArray, LRUArray, setSize, lineSize);
     printf("%.0f misses, ", missNumber);
     printf("%.0f total memory references, ", totalMemoryReferences);
     printf("%2.4f  miss rate, \n\n", missRate);
@@ -180,7 +179,7 @@ void simulator(int C, int K, int L){
 int main(){
     int i;
     printf("Part c) \n");
-    for (i =1; i<20; i=i*2){
-        simulator(256, i, 16);
+    for (i =1; i<2050; i=i*2){
+        simulator(1024, 2, i);
     }
 }

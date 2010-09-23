@@ -3,6 +3,9 @@
 
 
 //This method updates the LRU
+//Each entry in the LRU has a value of [0 - (setSize - 1)], and every time a value is updated in
+//the array, the entries with a value smaller than the order of the entry that was changed is inremented by one
+//the Most Recently Used entry is then modified to 0. This way, the LRU will always be the entry with (setSize - 1)
 void updateLRU(int LRUArray[], int dataSet, int dataLine, int lineSize){
     int i;
     int order = LRUArray[dataLine+lineSize*dataSet]; //LRU index of line
@@ -15,27 +18,31 @@ void updateLRU(int LRUArray[], int dataSet, int dataLine, int lineSize){
     LRUArray[dataLine+lineSize*dataSet] = 0;
 }
 
+//Line size is the value of K
 int calculateLineSize(int C, int K, int L){
     int size; //Logic for cache size
     size = K;
     return size;
 }
 
+//The number of sets is (Cache Size)/(Number of sets * Bytes per Line)
 int calculateSetSize(int C, int K, int L){
     int size; //Logic for cache size
     size = C/(K*L);
     return size;
 }
 
-
+//This method takes a given index and modifies the validBit of the given entry to 1
 void validateData(int validBitArray[], int set, int line, int lineSize){
     validBitArray[line+lineSize*set] = 1;
 }
 
+//This value writes the tag value to the given index given by the index (set*lineSize + line)
 void writeToAddress(int tagArray[], int set, int line, int tag, int lineSize){
     tagArray[line+lineSize*set] = tag;
 }
 
+//This value checks for the index of the entry with the largest LRU value then writes to the given index
 int writeToCache(int tagArray[], int LRUArray[], int dataSet, int dataTag, int lineSize){
     int line;
     int i;
@@ -50,6 +57,7 @@ int writeToCache(int tagArray[], int LRUArray[], int dataSet, int dataTag, int l
 }
 
 
+//Checks for the valid bit of the given index and returns 1 for valid, -1 for invalid
 int dataValid(int validBitArray[], int set, int line, int lineSize){
     if(validBitArray[line+lineSize*set]==1){
         return 1;
@@ -59,6 +67,7 @@ int dataValid(int validBitArray[], int set, int line, int lineSize){
     }
 }
 
+//This method checks if the tag is found in a given set
 int tagHit(int tagArray[],int dataSet, int dataTag, int lines){
     int i;
     for(i = 0; i<lines; i++){
@@ -68,6 +77,9 @@ int tagHit(int tagArray[],int dataSet, int dataTag, int lines){
     }
     return -1;
 }
+
+//This method decodes the set by bitshifting the offset, and then anding the set field with all ones, and zeroes in all other positions
+//in order to isolate the set number.
 int decodeSet(int address, int C, int K, int L, int sets){
     int set;
     int andAmount = log2(L)+log2(sets);
@@ -78,6 +90,7 @@ int decodeSet(int address, int C, int K, int L, int sets){
     return set;
 }
 
+//Decodes the tag by shifting the offset and set out.
 int decodeTag(int address, int C, int K, int L, int sets){
     int tag;
     int shiftamount = log2(L) + log2(sets);
@@ -85,6 +98,7 @@ int decodeTag(int address, int C, int K, int L, int sets){
     return tag;
 }
 
+//This method replaces all values in the validBitArray to 0 in order to devalidate the cache
 void clearCache(int validBitArray[], int lineSize, int setSize){
     int i;
     for(i = 0; i<lineSize*setSize; i++){
@@ -92,6 +106,7 @@ void clearCache(int validBitArray[], int lineSize, int setSize){
     }
 }
 
+//Simple method to print the entire cache
 void printCache(int tagArray[], int validBitArray[], int LRUArray[], int set, int line){
     int i,j;
 
@@ -109,39 +124,26 @@ void printCache(int tagArray[], int validBitArray[], int LRUArray[], int set, in
 
 void simulator(int C, int K, int L){
 
+    //Calculates number of sets, size of lines and initializes the three arrays LRUArray, tagArray, validBitArray for the simulation
     int setSize = calculateSetSize(C, K, L);
     int lineSize = calculateLineSize(C, K, L);
-    //First set of arrays for data
     int LRUArray[lineSize*setSize], tagArray[lineSize*setSize], validBitArray[lineSize*setSize];
-    //First set of arrays for data
-    int dataLRUArray[lineSize*setSize], dataTagArray[lineSize*setSize], dataValidBitArray[lineSize*setSize];
-    //Second set of arrays for instruction
-    int instructionLRUArray[lineSize*setSize], instructionTagArray[lineSize*setSize], instructionValidBitArray[lineSize*setSize];
     //Initializes all array entries to 0
     int i,j;
+    printf("%d Cache, %d Lines, %d Bytes Per Block \n", C, K, L);
     //Initializing every LRU of the cache to a value between 0 - (lineSize-1)
     for(i = 0; i<lineSize; i++ ){
         for(j = 0; j<setSize; j++){
             LRUArray[i+j*lineSize] = i;
             validBitArray[i+j*lineSize] = 0;
             tagArray[i+j*lineSize] = 0;
-            dataLRUArray[i+j*lineSize] = i;
-            dataValidBitArray[i+j*lineSize] = 0;
-            dataTagArray[i+j*lineSize] = 0;
-            instructionLRUArray[i+j*lineSize] = i;
-            instructionValidBitArray[i+j*lineSize] = 0;
-            instructionTagArray[i+j*lineSize] = 0;
         }
 
     }
 
     int instruction, address, tag, set, setLine;
-    double missNumber, totalMemoryReferences, dataMiss, instructionMiss, dataReferences, instructionReferences; //miss will take care of maintaining track of how many misses the simulator has, toatlIteratiosn just counts how many total addresses the simulator has.
+    double missNumber, totalMemoryReferences; //miss will take care of maintaining track of how many misses the simulator has, toatlIteratiosn just counts how many total addresses the simulator has.
     missNumber = 0;
-    dataMiss = 0;
-    instructionMiss = 0;
-    dataReferences = 0;
-    instructionReferences = 0;
     totalMemoryReferences = 0;
     instruction = 1;
     address = 0;
@@ -154,101 +156,60 @@ void simulator(int C, int K, int L){
         switch (instruction){ // cases 0 -3 run the same thing
             case 0:
             case 1:
-                tag = decodeTag(address, C, K, L, setSize);
-                set = decodeSet(address, C, K, L, setSize);
-                //Printing information
-                //printf("Address: %x \n Tag: %d \n Set: %d \n\n", address, tag, set);
-                if((setLine = tagHit(dataTagArray, set, tag, lineSize)) > -1){
-                    if(dataValid(dataValidBitArray, set, setLine, lineSize)>0){
-                        updateLRU(dataLRUArray, set, setLine, lineSize);
-                    }else{
-                        writeToAddress(dataTagArray, set, tag, setLine, lineSize);
-                        validateData(dataValidBitArray, set, setLine, lineSize);
-                        updateLRU(dataLRUArray, set, setLine, lineSize);
-                        dataMiss++;
-                        missNumber++;
-                    }
-                }else{
-                    setLine = writeToCache(dataTagArray, dataLRUArray, set, tag, lineSize);
-                    validateData(dataValidBitArray, set, setLine, lineSize);
-                    updateLRU(dataLRUArray, set, setLine, lineSize);
-                    dataMiss++;
-                    missNumber++;
-                }
-                dataReferences++;
-                totalMemoryReferences++;
-                break;
-
             case 2:
+            //Decoding tag and set for given address
                 tag = decodeTag(address, C, K, L, setSize);
                 set = decodeSet(address, C, K, L, setSize);
                 //Printing information
-                //printf("Address: %x \n Tag: %d \n Set: %d \n\n", address, tag, set);
-                if((setLine = tagHit(instructionTagArray, set, tag, lineSize)) > -1){
-                    if(dataValid(instructionValidBitArray, set, setLine, lineSize)>0){
-                        updateLRU(instructionLRUArray, set, setLine, lineSize);
+                printf("Address: %x \n Tag: %x \n Set: %d \n\n", address, tag, set);
+                //setLine will become an index value if there is a tag hit in the given set
+                if((setLine = tagHit(tagArray, set, tag, lineSize)) > -1){
+                    //If there is a tag hit, the simulator checks if the data in the given index is valid
+                    if(dataValid(validBitArray, set, setLine, lineSize)>0){
+                        //If the data is valid, simulator updates LRU
+                        updateLRU(LRUArray, set, setLine, lineSize);
                     }else{
-                        writeToAddress(instructionTagArray, set, tag, setLine, lineSize);
-                        validateData(instructionValidBitArray, set, setLine, lineSize);
-                        updateLRU(instructionLRUArray, set, setLine, lineSize);
-                        instructionMiss++;
+                        //If data is not valid, simulator writes given tag to given address, validates data, and updates LRU, and the miss is accoutned for
+                        writeToAddress(tagArray, set, tag, setLine, lineSize);
+                        validateData(validBitArray, set, setLine, lineSize);
+                        updateLRU(LRUArray, set, setLine, lineSize);
                         missNumber++;
+                       printf("Miss");
                     }
                 }else{
-                    setLine = writeToCache(instructionTagArray, LRUArray, set, tag, lineSize);
-                    validateData(instructionValidBitArray, set, setLine, lineSize);
-                    updateLRU(instructionLRUArray, set, setLine, lineSize);
-                    instructionMiss++;
+                    //If the tag is not found within the set, writeToCache returns the index of the LRU, the miss is accoutned for.
+                    setLine = writeToCache(tagArray, LRUArray, set, tag, lineSize);
+                    validateData(validBitArray, set, setLine, lineSize);
+                    updateLRU(LRUArray, set, setLine, lineSize);
                     missNumber++;
+                    printf("Miss");
                 }
-                instructionReferences++;
-                totalMemoryReferences++;
-
                 break;
-            //End iteration
-        //address++;
+
             case 3:break;
             case 4:
-                clearCache(dataValidBitArray, lineSize, setSize);
-                clearCache(instructionValidBitArray, lineSize, setSize);
+                //if instruction is 4, the cache is cleared
+                clearCache(validBitArray, lineSize, setSize);
                 break;
         }
+        totalMemoryReferences++;
+            //End iteration
+        //address++;
+        printf("INSIDE LOOP");
+        printCache(tagArray, validBitArray, LRUArray, setSize, lineSize);
+        int scan;
+        scanf("%d", &scan);
     }
+
     fclose(ifp); //  Close file
     double missRate = missNumber/totalMemoryReferences*100;
-    double instructionMissRate = instructionMiss/totalMemoryReferences*100;
-    double dataMissRate = dataMiss/totalMemoryReferences*100;
     //printCache(tagArray, validBitArray, LRUArray, setSize, lineSize);
     printf("%.0f misses, ", missNumber);
     printf("%.0f total memory references, ", totalMemoryReferences);
-    printf("%2.4f  miss rate, \n", missRate);
-
-    printf("%.0f misses, ", dataMiss);
-    printf("%.0f total memory references, ", totalMemoryReferences);
-    printf("%2.4f data miss rate, \n", dataMissRate);
-
-    printf("%.0f misses, ", instructionMiss);
-    printf("%.0f total memory references, ", totalMemoryReferences);
-    printf("%2.4f instruction miss rate, \n\n", instructionMissRate);
+    printf("%2.4f  miss rate, \n\n", missRate);
 }
 
 int main(){
-    simulator(1024, 4, 16);
-/*
-    int i;
-    printf("Part a) \n");
-    for (i =4; i<257; i=i*2){
-        simulator(1024, 1, i);
-    }
+    simulator(4, 4, 1);
 
-    printf("Part b) \n");
-    for (i =64; i<10000; i=i*2){
-        simulator(i, 4, 16);
-    }
-
-    printf("Part c) \n");
-    for (i =1; i<20; i=i*2){
-        simulator(256, i, 16);
-    }
-    */
 }
